@@ -28,30 +28,49 @@ function showCourses() {
 function showStudents() {
     fetch(`${apiBaseUrl}/students`)
         .then(response => response.json())
-        .then(data => {
-            let content = '<h2>Students</h2>';
-            content += '<button onclick="showStudentForm()">Create Student</button>';
-            content += '<div id="studentForm" style="display:none;">' +
-                       '<input type="text" id="studentName" placeholder="Student Name">' +
-                       '<select id="courseSelect"></select>' +
-                       '<button onclick="createStudent()">Save</button></div>';
-            content += '<table><tr><th>ID</th><th>Name</th><th>Course ID</th><th>Actions</th></tr>';
-            data.forEach(student => {
-                content += `<tr>
-                    <td>${student.id}</td>
-                    <td>${student.name}</td>
-                    <td>${student.course_id}</td>
-                    <td>
-                        <button onclick="showEditStudentForm(${student.id}, '${student.name}', ${student.course_id})">Edit</button>
-                        <button class="delete" onclick="deleteStudent(${student.id})">Delete</button>
-                    </td>
-                </tr>`;
-            });
-            content += '</table>';
-            document.getElementById('content').innerHTML = content;
-            populateCourseSelect();
+        .then(studentsData => {
+            fetch(`${apiBaseUrl}/courses`)
+                .then(response => response.json())
+                .then(coursesData => {
+                    let content = '<h2>Students</h2>';
+                    content += '<button onclick="showStudentForm()">Create Student</button>';
+                    content += '<div id="studentForm" style="display:none;">' +
+                               '<input type="text" id="studentName" placeholder="Student Name">' +
+                               '<select id="courseSelect"></select>' +
+                               '<button onclick="createStudent()">Save</button></div>';
+                    content += '<table><tr><th>ID</th><th>Name</th><th>Course Name</th><th>Actions</th></tr>';
+
+                    studentsData.forEach(student => {
+                        // Alapértelmezett érték ha nincs kurzus társítva
+                        let courseName = 'No Course';
+
+                        // Keresés a kurzusok között, hogy megtaláljuk, melyik kurzushoz tartozik a diák
+                        coursesData.forEach(course => {
+                            const isStudentInCourse = course.students.find(s => s.id === student.id);
+                            if (isStudentInCourse) {
+                                courseName = course.name; // Kurzus neve, ha megtaláltuk
+                            }
+                        });
+
+                        content += `<tr>
+                            <td>${student.id}</td>
+                            <td>${student.name}</td>
+                            <td>${courseName}</td>
+                            <td>
+                                <button onclick="showEditStudentForm(${student.id}, '${student.name}', ${student.course_id})">Edit</button>
+                                <button class="delete" onclick="deleteStudent(${student.id})">Delete</button>
+                            </td>
+                        </tr>`;
+                    });
+
+                    content += '</table>';
+                    document.getElementById('content').innerHTML = content;
+                    populateCourseSelect();
+                });
         });
 }
+
+
 
 function populateCourseSelect(selectedCourseId = null) {
     fetch(`${apiBaseUrl}/courses`)
@@ -147,7 +166,7 @@ function editStudent(id) {
     const courseId = document.getElementById('courseSelect').value;
     if (name && courseId) {
         fetch(`${apiBaseUrl}/students/${id}`, {
-            method: 'PATCH',
+            method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, course_id: courseId })
         }).then(() => {
